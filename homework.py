@@ -40,9 +40,9 @@ def check_tokens():
     required_tokens = [PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]
     missing_tokens = [token for token in required_tokens if token is None]
     if missing_tokens:
-        message = f"Отсутствуют необходимые переменные окружения"
+        message = "Отсутствуют необходимые переменные окружения"
         logging.critical(message)
-        raise EnvironmentError(message) 
+        raise EnvironmentError(message)
     return True
 
 
@@ -122,48 +122,48 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    try:
-        check_tokens()
-        last_message = {
-            'error': None,
-        }
-        bot = TeleBot(token=TELEGRAM_TOKEN)
-        timestamp = int(time.time())
-        while True:
-            try:
-                api_answer = get_api_answer(timestamp)
-                homeworks = check_response(api_answer)
-                if len(homeworks) == 0:
-                    message = 'Получен пустой ответ API. Домашних работ нет.'
-                    logging.debug(message)
-                    break
-                for homework in homeworks:
-                    try:
-                        message = parse_status(homework)
-                        if last_message.get(homework['homework_name']) != message:
-                            send_message(bot, message)
-                            last_message['error'] = message
-                    except Exception as error:
-                        logging.error(error)
-                timestamp = api_answer.get('current_date')
-            except Exception as error:
-                message = f'Сбой в работе программы: {error}'
-                if last_message['error'] != message:
-                    send_message(bot, message)
-                    last_message['error'] = message
-            except KeyboardInterrupt:
-                print("\nПрограмма остановлена пользователем.")
-                logging.info("Программа остановлена пользователем.")
-                break
-            else:
-                last_message['error'] = None
-            finally:
+    check_tokens()  # Проверяем токены
+
+    bot = TeleBot(token=TELEGRAM_TOKEN)
+    last_message = {}
+    timestamp = int(time.time())
+
+    while True:
+        try:
+            api_answer = get_api_answer(timestamp)
+            homeworks = check_response(api_answer)
+
+            if not homeworks:
+                logging.debug('Нет новых статусов.')
                 time.sleep(RETRY_PERIOD)
-    except EnvironmentError as error:
-        logging.critical(f'Ошибка: {error}')
-        exit()
-    except Exception as error:
-        logging.exception(f'Непредвиденная ошибка: {error}')
+                continue
+
+            process_homeworks(homeworks, bot, last_message)
+            timestamp = api_answer.get('current_date', timestamp)
+
+        except Exception as error:
+            handle_error(error, bot)
+
+        time.sleep(RETRY_PERIOD)
+
+
+def process_homeworks(homeworks, bot, last_message):
+    """Обрабатывает список домашних работ и отправляет сообщения о статусах."""
+    for homework in homeworks:
+        try:
+            message = parse_status(homework)
+            if last_message.get(homework['homework_name']) != message:
+                send_message(bot, message)
+                last_message[homework['homework_name']] = message
+        except Exception as error:
+            logging.error(error)
+
+
+def handle_error(error, bot):
+    """Обрабатывает ошибки и отправляет сообщения в Telegram."""
+    message = f'Сбой в работе программы: {error}'
+    send_message(bot, message)  # Отправляем сообщение в Telegram только один раз при ошибке
+    logging.exception(message)
 
 
 if __name__ == '__main__':
