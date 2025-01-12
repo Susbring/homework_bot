@@ -122,7 +122,7 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    check_tokens()  # Проверяем токены
+    check_tokens()
 
     bot = TeleBot(token=TELEGRAM_TOKEN)
     last_message = {}
@@ -162,7 +162,7 @@ def process_homeworks(homeworks, bot, last_message):
 def handle_error(error, bot):
     """Обрабатывает ошибки и отправляет сообщения в Telegram."""
     message = f'Сбой в работе программы: {error}'
-    send_message(bot, message)  # Отправляем сообщение в Telegram только один раз при ошибке
+    send_message(bot, message)
     logging.exception(message)
 
 
