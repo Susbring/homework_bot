@@ -9,7 +9,7 @@ class HTTPError(Exception):
         super().__init__(message)
 
 
-class StError(Exception):
+class StatusParsingError(Exception):
     """Проверка ошибки статуса."""
 
     def __init__(self, text):
