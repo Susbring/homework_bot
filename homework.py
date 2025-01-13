@@ -43,7 +43,10 @@ def check_tokens():
         token for token, value in required_tokens.items() if value is None
     ]
     if missing_tokens:
-        logging.critical(f'Отсутствуют необходимые переменные окружения: {", ".join(missing_tokens)}')
+        logging.critical(
+            'Отсутствуют необходимые переменные окружения:' 
+            f'{", ".join(missing_tokens)}'
+        )
         sys.exit(1)
     return True
 
@@ -64,8 +67,8 @@ def send_message(bot, message):
 def get_api_answer(timestamp):
     """Отправляет запрос к endpoint."""
     try:
-        params = {'from_date': timestamp} 
-        response = requests.get(ENDPOINT, headers=HEADERS, params=params) 
+        params = {'from_date': timestamp}
+        response = requests.get(ENDPOINT, headers=HEADERS, params=params)
     except requests.RequestException:
         return
     except ValueError:
@@ -100,7 +103,7 @@ def parse_status(homework):
         message = 'Отстутствует ключ имени домашней работы'
         logging.warning(message)
         raise KeyError(message)
-    
+
     homework_name = homework.get('homework_name')
     homework_status = homework.get('status')
     if 'status' not in homework:
@@ -121,9 +124,9 @@ def main():
     """Основная логика работы бота."""
     check_tokens()
 
-    bot = TeleBot(token=TELEGRAM_TOKEN) 
+    bot = TeleBot(token=TELEGRAM_TOKEN)
     last_message = None
-    timestamp = int(time.time()) 
+    timestamp = int(time.time())
 
     while True:
         try:
@@ -141,7 +144,7 @@ def main():
             timestamp = api_answer.get('current_date', timestamp)
         except Exception as error:
             handle_error(error, bot)
-        
+
         if not homeworks:
             logging.debug('Нет новых статусов.')
 
