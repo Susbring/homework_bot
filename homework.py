@@ -44,7 +44,7 @@ def check_tokens():
     ]
     if missing_tokens:
         logging.critical(
-            'Отсутствуют необходимые переменные окружения:' 
+            'Отсутствуют необходимые переменные окружения: '
             f'{", ".join(missing_tokens)}'
         )
         sys.exit(1)
