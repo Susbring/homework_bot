@@ -20,8 +20,10 @@ class StatusParsingError(Exception):
 
 
 class RequestError(Exception):
+    """Ошибка при запросе к API"""
+
     def __init__(self, text):
         message = (
-            f'Ошибка при запросе к API:: {text}'
+            f'Ошибка при запросе к API: {text}'
         )
-        super().__init__(text)
+        super().__init__(message)
