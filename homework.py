@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from telebot import TeleBot
 from telebot.apihelper import ApiException
 
-from exceptions import StatusParsingError, HTTPError
+from exceptions import StatusParsingError, HTTPError, RequestError
 
 load_dotenv()
 
@@ -47,7 +47,7 @@ def check_tokens():
             'Отсутствуют необходимые переменные окружения: '
             f'{", ".join(missing_tokens)}'
         )
-        sys.exit(1)
+        return False
     return True
 
 
@@ -56,12 +56,13 @@ def send_message(bot, message):
     try:
         logging.debug(f'Бот отправил сообщение {message}')
         bot.send_message(TELEGRAM_CHAT_ID, message)
+        return True
     except ApiException as error:
         logging.error(f'Ошибка при отправке сообщения в Telegram: {error}')
+        return False
     except requests.exceptions.RequestException as error:
         logging.error(f'Ошибка при запросе к API Telegram: {error}')
-    except Exception as error:
-        logging.error(f'Неизвестная ошибка при отправке сообщения: {error}')
+        return False
 
 
 def get_api_answer(timestamp):
@@ -69,10 +70,8 @@ def get_api_answer(timestamp):
     try:
         params = {'from_date': timestamp}
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
-    except requests.RequestException:
-        return
-    except ValueError:
-        return
+    except requests.RequestException as error:
+        raise RequestError(error)
 
     if response.status_code != HTTPStatus.OK:
         raise HTTPError(response)
@@ -82,17 +81,13 @@ def get_api_answer(timestamp):
 def check_response(response):
     """Получает и проверяет ответ от endpoint."""
     if not response:
-        message = 'Полученный ответ пустой.'
-        raise KeyError(message)
+        raise ValueError('Полученный ответ пустой.')
     if not isinstance(response, dict):
-        message = 'Некорректный тип.'
-        raise TypeError(message)
+        raise TypeError('Некорректный тип ответа.')
     if 'homeworks' not in response:
-        message = 'Не хватает ключа в ответе.'
-        raise KeyError(message)
+        raise KeyError('Не хватает ключа "homeworks" в ответе.')
     if not isinstance(response.get('homeworks'), list):
-        message = 'Некорректный формат ответа.'
-        raise TypeError(message)
+        raise TypeError('Некорректный формат данных "homeworks".')
 
     return response['homeworks']
 
@@ -101,7 +96,6 @@ def parse_status(homework):
     """Получает статус дз."""
     if ('homework_name' not in homework) or not homework.get('homework_name'):
         message = 'Отстутствует ключ имени домашней работы'
-        logging.warning(message)
         raise KeyError(message)
 
     homework_name = homework.get('homework_name')
@@ -122,11 +116,13 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    check_tokens()
+    if not check_tokens():
+        sys.exit(1)
 
     bot = TeleBot(token=TELEGRAM_TOKEN)
     last_message = None
-    timestamp = int(time.time())
+    last_error_message = None
+    timestamp = 0
 
     while True:
         try:
@@ -134,16 +130,13 @@ def main():
             homeworks = check_response(api_answer)
 
             for homework in homeworks:
-                try:
-                    message = parse_status(homework)
-                    if message != last_message:
-                        send_message(bot, message)
+                message = parse_status(homework)
+                if message != last_message:
+                    if send_message(bot, message):
                         last_message = message
-                except Exception as error:
-                    logging.error(error)
-            timestamp = api_answer.get('current_date', timestamp)
+                        timestamp = api_answer.get('current_date', timestamp)
         except Exception as error:
-            handle_error(error, bot)
+            last_error_message = handle_error(error, bot, last_error_message)
 
         if not homeworks:
             logging.debug('Нет новых статусов.')
@@ -151,14 +144,14 @@ def main():
         time.sleep(RETRY_PERIOD)
 
 
-def handle_error(error, bot):
+def handle_error(error, bot, last_error_message=None):
     """Обрабатывает ошибки и отправляет сообщения в Telegram."""
-    global last_error_message
     message = f'Сбой в работе программы: {error}'
     if message != last_error_message:
-        last_error_message = message
         send_message(bot, message)
+        return message
     logging.error(message)
+    return last_error_message
 
 
 if __name__ == '__main__':

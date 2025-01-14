@@ -17,3 +17,11 @@ class StatusParsingError(Exception):
             f'Парсинг ответа API: {text}'
         )
         super().__init__(message)
+
+
+class RequestError(Exception):
+    def __init__(self, text):
+        message = (
+            f'Ошибка при запросе к API:: {text}'
+        )
+        super().__init__(text)
