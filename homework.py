@@ -95,21 +95,16 @@ def check_response(response):
 def parse_status(homework):
     """Получает статус дз."""
     if ('homework_name' not in homework) or not homework.get('homework_name'):
-        message = 'Отстутствует ключ имени домашней работы'
-        raise KeyError(message)
+        raise KeyError('Отстутствует ключ имени домашней работы')
 
     homework_name = homework.get('homework_name')
     homework_status = homework.get('status')
     if 'status' not in homework:
-        message = 'Отстутствует ключ статуса домашней работы.'
-        logging.error(message)
-        raise KeyError(message)
+        raise KeyError('Отстутствует ключ статуса домашней работы.')
 
     verdict = HOMEWORK_VERDICTS.get(homework_status)
     if homework_status not in HOMEWORK_VERDICTS:
-        message = 'Такого статуса нет.'
-        logging.error(message)
-        raise StatusParsingError(message)
+        raise StatusParsingError('Такого статуса нет.')
 
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
@@ -121,7 +116,6 @@ def main():
 
     bot = TeleBot(token=TELEGRAM_TOKEN)
     last_message = None
-    last_error_message = None
     timestamp = 0
 
     while True:
@@ -136,7 +130,7 @@ def main():
                         last_message = message
                         timestamp = api_answer.get('current_date', timestamp)
         except Exception as error:
-            last_error_message = handle_error(error, bot, last_error_message)
+            last_message = handle_error(error, bot, last_error_message)
 
         if not homeworks:
             logging.debug('Нет новых статусов.')
